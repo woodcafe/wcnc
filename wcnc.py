@@ -41,6 +41,18 @@ def move():
 def sand():
     return render_template('sand.html')
     
+@app.route('/command', methods=['POST', 'GET'])
+def command():
+    if request.method == 'POST':
+        return 'ok'
+    return render_template('command.html')
+    
+@app.route('/file', methods=['POST', 'GET'])
+def file():
+    if request.method == 'POST':
+        return 'ok'
+    return render_template('file.html')
+
 #if __name__ == '__main__':
     #app.run(debug=True, host='0.0.0.0')
   

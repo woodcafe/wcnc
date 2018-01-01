@@ -40,35 +40,53 @@ class Cnc(object):
         self.ser.write("?".encode())
         self.read(True)
     
-    def move(self, x=None, y=None, z=None, stay=0):
-        print('cnc:move x=%s y=%s z=%s stay=%d' %(x, y, z, stay))
-        msg = 'G0 '
+    def move(self, x=None, y=None, z=None, f=0):
+        print('cnc:move x=%s y=%s z=%s f=%d' %(x, y, z, f))
+        msg = 'G0 ' if f else 'G1 '
         if x != None:
             msg += 'X%d ' % (x)
         if y is not None:
             msg += 'Y%d ' % (y)
         if z is not None:
             msg += 'Z%d ' % (z)
+        if f:
+            msg += 'F%d ' % (f)
         self.write(msg)
-        time.sleep(stay)
 
 class Sander(Cnc):
     def __init__(self, opts, args):
         Cnc.__init__(self)
-        self.stay = 5
+        self.feed = 100
         if args:
-            self.stay = int(args[0])
+            self.feed = int(args[0])
             
     def move(self, x=0, y=0, z=0, xstep=10, ystep=50):
         print('Sander:move x=%d y=%d z=%d xs=%d ys=%d' %(x, y, z, xstep, ystep))
         for v in range(0, y+1, ystep):
             print("v=%d"%v)
             super().move(y=v)
-            for u in range(0, x, xstep):
-                super().move(x=u, stay=self.stay)
-            for u in range(x, 0, xstep*-1):
-                super().move(x=u, stay=self.stay)
+            super().move(x, f=self.feed)
+            super().move(0, f=self.feed)
 
+class Holes(Cnc):
+    def __init__(self, opts, args):
+        Cnc.__init__(self)
+        self.holes = []
+        for p in args:
+            self.holes.append(p.split(','))
+            
+    def move(self, depth=0):
+        for p in self.holes:
+            (x, y) = p
+            super().move(x, y)
+            super().move(z=depth*-1, f=50)
+            super().move(z=0)
+            
+class BigHole(Cnc):
+    def __init__(self, opts, args):
+        Cnc.__init__(self)
+                    
+        
 class Gallery(Cnc):
     def move(self, x=0, y=0, z=0):
         xx = 30

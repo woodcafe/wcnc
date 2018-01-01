@@ -1,6 +1,8 @@
+# -- coding: utf-8 --
 from flask import Flask, render_template
 from flask import request
 from cnc import Cnc
+import sys
 
 app = Flask(__name__)
 
@@ -34,6 +36,10 @@ def move():
     cnc = Cnc('/dev/ttyUSB0')
     cnc.move(x, y, z)
     return output
+    
+@app.route('/sand', methods=['POST', 'GET'])
+def sand():
+    return render_template('sand.html')
     
 #if __name__ == '__main__':
     #app.run(debug=True, host='0.0.0.0')

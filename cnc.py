@@ -61,7 +61,7 @@ class Cnc(object):
         self.write(msg)
 
 class Sander(Cnc):
-    def __init__(self, opts, args):
+    def __init__(self, opts, args=None):
         Cnc.__init__(self, opts)
         self.feed = 100
         if args:
@@ -71,9 +71,9 @@ class Sander(Cnc):
         print('Sander:move x=%d y=%d z=%d xs=%d ys=%d' %(x, y, z, xstep, ystep))
         for v in range(0, y+1, ystep):
             print("v=%d"%v)
-            super().move(y=v)
-            super().move(x, f=self.feed)
-            super().move(0, f=self.feed)
+            super(self).move(y=v)
+            super(self).move(x, f=self.feed)
+            super(self).move(0, f=self.feed)
 
 class Holes(Cnc):
     def __init__(self, opts, args):

@@ -1,7 +1,7 @@
 # -- coding: utf-8 --
 from flask import Flask, render_template, request, redirect, url_for
 from werkzeug.utils import secure_filename
-from cnc import Cnc
+from cnc import *
 import sys, os
 
 app = Flask(__name__)
@@ -39,9 +39,6 @@ def move():
         return output
     return render_template('move.html')
     
-@app.route('/sand', methods=['POST', 'GET'])
-def sand():
-    return render_template('sand.html')
     
 @app.route('/command', methods=['POST', 'GET'])
 def command():
@@ -67,6 +64,21 @@ def file():
         return f.filename
 
     return render_template('file.html')
+
+@app.route('/sand', methods=['POST', 'GET'])
+def sand():
+    if request.method == 'POST':
+        x=y=0
+        if 'x' in request.form and request.form['x']:
+            x = int(request.form['x'])
+        if 'y' in request.form and request.form['y']:
+            y = int(request.form['y'])
+        output = 'x=%d y=%d'% (x, y)
+        cnc = Sander('/dev/ttyUSB0')
+        cnc.move(x, y)
+        return output
+    return render_template('sand.html')
+
     
 #if __name__ == '__main__':
     #app.run(debug=True, host='0.0.0.0')

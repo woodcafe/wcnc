@@ -60,20 +60,24 @@ class Cnc(object):
             msg += 'F%d ' % (f)
         self.write(msg)
 
+    def gcode(self, fname=''):
+        f = open(fname)
+        for line in f:
+            self.write(line)
+
 class Sander(Cnc):
-    def __init__(self, opts, args=None):
-        Cnc.__init__(self, opts)
-        self.feed = 100
-        if args:
-            self.feed = int(args[0])
+    def __init__(self, port, feed=100, width=100):
+        Cnc.__init__(self, port)
+        self.feed = feed
+        self.width = width
             
-    def move(self, x=0, y=0, z=0, xstep=10, ystep=50):
-        print('Sander:move x=%d y=%d z=%d xs=%d ys=%d' %(x, y, z, xstep, ystep))
-        for v in range(0, y+1, ystep):
+    def move(self, x=0, y=0, z=0):
+        print('Sander:move x=%d y=%d feed=%d width=%d' %(x, y, self.feed, self.width))
+        for v in range(0, abs(y)+1, ystep):
             print("v=%d"%v)
-            super(self).move(y=v)
-            super(self).move(x, f=self.feed)
-            super(self).move(0, f=self.feed)
+            super().move(y=v*y/abs(y))
+            super().move(x, f=self.feed)
+            super().move(0, f=self.feed)
 
 class Holes(Cnc):
     def __init__(self, opts, args):
@@ -105,17 +109,6 @@ class Gallery(Cnc):
             super().move(0)
             super().move(z=0)
             
-class GSender(Cnc):
-    def __init__(self, opts, args):
-        Cnc.__init__(self, opts)
-        if args:
-            self.fname = args[0]
-            
-    def move(self, x=0, y=0, z=0):
-        f = open(self.fname)
-        for line in f:
-            super().write(line)
-
 class Test(Cnc):
     def __init__(self, opts, args):
         Cnc.__init__(self, opts)
@@ -135,18 +128,17 @@ def main():
     parser.add_option('-p', '--port', dest='port', help='serial port', default='COM3')
     parser.add_option('-b', '--baud', type='int', dest='baud', help='baud rate', default=9600)
     parser.add_option('-s', '--sand', action='store_true', dest='s', help='sand second')    
-    parser.add_option('-g', '--gallery', action='store_true', dest='g', help='gallery hole')    
-    parser.add_option('-f', '--file', action='store_true', dest='f', help='gcode file name')    
+    parser.add_option('-g', '--gcode', dest='g', help='gcode file')    
+    parser.add_option('-f', '--feed', dest='f', help='feed rate', default=100)    
     parser.add_option('-t', '--test', action='store_true', dest='t', help='test')    
     options, args = parser.parse_args()
     
-    cnc = Cnc(options)
+    cnc = Cnc(options.port)
     if options.s:
-        cnc = Sander(options, args)
+        cnc = Sander(options.port, options.f)
     elif options.g:
-        cnc = Gallery()
-    elif options.f:
-        cnc = GSender(options, args)
+        cnc.gcode(options.g)
+        return
     elif options.t:
         cnc = Test(options, args)
     cnc.move(options.x, options.y, options.z)

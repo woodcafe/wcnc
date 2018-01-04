@@ -69,13 +69,16 @@ def file():
 def sand():
     if request.method == 'POST':
         x=y=0
+        f=100
         if 'x' in request.form and request.form['x']:
             x = int(request.form['x'])
         if 'y' in request.form and request.form['y']:
             y = int(request.form['y'])
-        output = 'x=%d y=%d'% (x, y)
+        if 'f' in request.form and request.form['f']:
+            f = int(request.form['f'])
+        output = 'x=%d y=%d f='%d'% (x, y, f)
         cnc = Sander('/dev/ttyUSB0')
-        cnc.move(x, y)
+        cnc.move(x, y, f)
         return output
     return render_template('sand.html')
 

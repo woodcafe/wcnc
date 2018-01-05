@@ -76,7 +76,7 @@ def sand():
             y = int(request.form['y'])
         if 'f' in request.form and request.form['f']:
             f = int(request.form['f'])
-        output = 'x=%d y=%d f='%d'% (x, y, f)
+        output = 'x=%d y=%d f=%d'% (x, y, f)
         cnc = Sander('/dev/ttyUSB0')
         cnc.move(x, y, f)
         return output

@@ -44,8 +44,8 @@ def move(where=None):
     if x or y or z:
         output = 'x=%d y=%d z=%d'% (x, y, z)
         print(output)
-#        cnc = Cnc('/dev/ttyUSB0')
-#        cnc.move(x, y, z)
+        cnc = Cnc('/dev/ttyUSB0')
+        cnc.move(x, y, z)
 #        return output
     return render_template('move.html')
     

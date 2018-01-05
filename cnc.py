@@ -66,18 +66,17 @@ class Cnc(object):
             self.write(line)
 
 class Sander(Cnc):
-    def __init__(self, port, feed=100, width=100):
+    def __init__(self, port, width=100):
         Cnc.__init__(self, port)
-        self.feed = feed
         self.width = width
             
-    def move(self, x=0, y=0, z=0):
-        print('Sander:move x=%d y=%d feed=%d width=%d' %(x, y, self.feed, self.width))
+    def move(self, x=0, y=0, f=100):
+        print('Sander:move x=%d y=%d feed=%d width=%d' %(x, y, f, self.width))
         for v in range(0, abs(y)+1, self.width):
             print("v=%d"%v)
-            super(Sander, self).move(y=v*y/abs(y), f=self.feed*10)
-            super(Sander, self).move(x, f=self.feed)
-            super(Sander, self).move(0, f=self.feed)
+            super(Sander, self).move(y=v*y/abs(y), f=f*10)
+            super(Sander, self).move(x, f=f)
+            super(Sander, self).move(0, f=f)
 
 
 class Holes(Cnc):
@@ -136,7 +135,8 @@ def main():
     
     cnc = Cnc(options.port)
     if options.s:
-        cnc = Sander(options.port, options.f)
+        cnc = Sander(options.port)
+        options.z = options.f
     elif options.g:
         cnc.gcode(options.g)
         return

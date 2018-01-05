@@ -23,20 +23,30 @@ def hello(name='world'):
 def show_port(post_id):
     return 'Post %d' % post_id
     
-@app.route('/move', methods=['POST', 'GET'])
-def move():
+@app.route('/move/', methods=['POST', 'GET'])
+@app.route('/move/<where>')
+def move(where=None):
+    x=y=z=0
     if request.method == 'POST':
-        x=y=z=0
         if 'x' in request.form and request.form['x']:
             x = int(request.form['x'])
         if 'y' in request.form and request.form['y']:
             y = int(request.form['y'])
         if 'z' in request.form and request.form['z']: 
             z = int(request.form['z'])
+    elif where:
+        if where[0] == 'x':
+            x = int(where[1:])
+        if where[0] == 'y':
+            y = int(where[1:])
+        if where[0] == 'z':
+            z = int(where[1:])
+    if x or y or z:
         output = 'x=%d y=%d z=%d'% (x, y, z)
-        cnc = Cnc('/dev/ttyUSB0')
-        cnc.move(x, y, z)
-        return output
+        print(output)
+#        cnc = Cnc('/dev/ttyUSB0')
+#        cnc.move(x, y, z)
+#        return output
     return render_template('move.html')
     
     
@@ -83,6 +93,6 @@ def sand():
     return render_template('sand.html')
 
     
-#if __name__ == '__main__':
-    #app.run(debug=True, host='0.0.0.0')
+if __name__ == '__main__':
+    app.run(debug=True, host='0.0.0.0')
   

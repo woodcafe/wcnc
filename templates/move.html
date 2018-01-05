@@ -1,7 +1,28 @@
+<!doctype html>
 <html>
 <head>
 <head>
 <body>
+{% set cursor = [['','','y+100','','','z+100'],
+            ['','','y+10','','','z+10'],
+            ['x-100','x-10','','x+10','x+100',''],
+            ['','','y-10','','','z-10'],
+            ['','','y-100','','','z-100']]
+%}
+            
+<table width="500">
+{%- for row in cursor %}
+    <tr>
+    {%- for val in row %}
+        <td>
+        {% if val %}
+            <a href="{{val}}">{{val}}</a>
+        {% endif %}
+        </td>
+    {%- endfor %}
+    </tr>
+{%- endfor %}
+</table>
 <form action="move" method="post">
     Move:</br>
     X:<input type='text' name="x"><br>

@@ -2,6 +2,7 @@ import serial
 import time
 from threading import Thread
 from optparse import OptionParser
+from joystick import Joystick
 
 class Cnc(object):
     def __init__(self, opts, args=None, baud=9600):
@@ -78,7 +79,6 @@ class Sander(Cnc):
             super(Sander, self).move(x, f=f)
             super(Sander, self).move(0, f=f)
 
-
 class Holes(Cnc):
     def __init__(self, opts, args):
         Cnc.__init__(self, opts)
@@ -119,6 +119,13 @@ class Test(Cnc):
             time.sleep(5)
             super(Test, self).move(x*-1, y*-1, z*-1)
             time.sleep(5)
+            
+class Jog(Joystick):
+    def move(self, x, y):
+        print('move x:%d y:%d' % (x,y))
+        
+    def key(self, button, state):
+        print('key:%d state:%d' % (button, state))
     
 def main():
     parser = OptionParser()
@@ -131,6 +138,8 @@ def main():
     parser.add_option('-g', '--gcode', dest='g', help='gcode file')    
     parser.add_option('-f', '--feed', type='int', dest='f', help='feed rate', default=100)    
     parser.add_option('-t', '--test', action='store_true', dest='t', help='test')    
+    parser.add_option('-w', '--write', dest='w', help='write command')    
+    parser.add_option('-j', '--jog', dest='jog', action='store_true', help='jog mode')    
     options, args = parser.parse_args()
     
     cnc = Cnc(options.port)
@@ -142,6 +151,13 @@ def main():
         return
     elif options.t:
         cnc = Test(options, args)
+    elif options.w:
+        cnc.write(options.w)
+        return
+    elif options.jog:
+        cnc = Jog()
+        cnc.read()
+        return
     cnc.move(options.x, options.y, options.z)
 
 if __name__ == "__main__":

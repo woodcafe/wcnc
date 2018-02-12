@@ -5,7 +5,7 @@ from optparse import OptionParser
 from joystick import Joystick
 
 class Cnc(object):
-    def __init__(self, opts, args=None, baud=9600):
+    def __init__(self, opts, args=None, baud=115200):
 #    def __init__(self, port='COM3', baud=9600):
         self.ser = None
         if isinstance(opts, str):

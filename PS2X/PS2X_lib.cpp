@@ -2,6 +2,7 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdint.h>
+#include <string.h>
 //#include <avr/io.h>
 #if ARDUINO > 22
   #include "Arduino.h"
@@ -89,12 +90,8 @@ unsigned char PS2X::_gamepad_shiftinout (char data) {
 }
 
 /****************************************************************************************/
-void PS2X::read_gamepad() {
-   read_gamepad(false, 0x00);
-}
-
-/****************************************************************************************/
-boolean PS2X::read_gamepad(boolean motor1, byte motor2) {
+double PS2X::read_gamepad(boolean motor1, byte motor2) {
+    double btns = 0;
    double temp = millis() - last_read;
 
    if (temp > 1500) //waited to long
@@ -112,7 +109,8 @@ boolean PS2X::read_gamepad(boolean motor1, byte motor2) {
    byte dword2[12] = {0,0,0,0,0,0,0,0,0,0,0,0};
 
    // Try a few times to get valid data...
-   for (byte RetryCnt = 0; RetryCnt < 5; RetryCnt++) {
+   for (byte RetryCnt = 0; RetryCnt < 5; RetryCnt++) 
+   {
       CMD_SET();
       CLK_SET();
       ATT_CLR(); // low enable joystick
@@ -122,12 +120,15 @@ boolean PS2X::read_gamepad(boolean motor1, byte motor2) {
       for (int i = 0; i<9; i++) {
          PS2data[i] = _gamepad_shiftinout(dword[i]);
       }
-
-      if(PS2data[1] == 0x79) {  //if controller is in full data return mode, get the rest of data
-         for (int i = 0; i<12; i++) {
+/*
+      if(PS2data[1] == 0x79) 
+      {  //if controller is in full data return mode, get the rest of data
+         for (int i = 0; i<12; i++) 
+         {
             PS2data[i+9] = _gamepad_shiftinout(dword2[i]);
          }
       }
+      */
 
       ATT_SET(); // HI disable joystick
       // Check to see if we received valid data or not.  
@@ -148,16 +149,21 @@ boolean PS2X::read_gamepad(boolean motor1, byte motor2) {
 
 #ifdef PS2X_COM_DEBUG
    printf(">> ");
-   for(int i=0; i<9; i++){
+   for(int i=0; i<9; i++)
+   {
       printf("%02x ", PS2data[i]);
    }
-   if ((PS2data[1] & 0xf0) == 0x70)
-   {
-   for (int i = 0; i<12; i++) {
-      printf("%02x ",  PS2data[i]);
-   }
-   printf("\n");
-}
+/*   
+    if ((PS2data[1] & 0xf0) == 0x70)
+        {
+        for (int i = 0; i<12; i++) 
+                {
+                  printf("%02x ",  PS2data[i]);
+                }
+        }   
+    */
+printf("\n");
+
 #endif
 
    last_buttons = buttons; //store the previous buttons states
@@ -168,14 +174,9 @@ boolean PS2X::read_gamepad(boolean motor1, byte motor2) {
    buttons =  (uint16_t)(PS2data[4] << 8) + PS2data[3];   //store as one value for multiple functions
 #endif
    last_read = millis();
-   return ((PS2data[1] & 0xf0) == 0x70);  // 1 = OK = analog mode - 0 = NOK
+   memcpy(&btns, &PS2data[1], sizeof(btns));
+   return btns;
 }
-
-/****************************************************************************************/
-byte PS2X::config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat) {
-   return config_gamepad(clk, cmd, att, dat, false, false);
-}
-
 
 void PS2X::setupPins(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat)
 {
@@ -190,13 +191,18 @@ void PS2X::setupPins(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat)
 	  pinMode(dat, INPUT);
 }
 /****************************************************************************************/
-byte PS2X::config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pressures, bool rumble) {
-
-  byte temp[sizeof(type_read)];
-
+byte PS2X::config_gamepad(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat, bool pressures, bool rumble) 
+{
+	byte temp[sizeof(type_read)];
+	
+	delay(300);  //added delay to give wireless ps2 module some time to startup, before configuring it
+	if (wiringPiSetup () == -1)
+	{
+		printf ("Unable to start wiringPi:\n");
+		return 1 ;
+	}
+	
 	setupPins(clk, cmd, att, dat);
-
-
 
   CMD_SET(); // SET(*_cmd_oreg,_cmd_mask);
   CLK_SET();
@@ -289,6 +295,7 @@ void PS2X::sendCommandString(byte string[], byte len) {
   printf("\n");
 #else
   ATT_CLR(); // low enable joystick
+  delayMicroseconds(CTRL_BYTE_DELAY);
   for (int y=0; y < len; y++)
     _gamepad_shiftinout(string[y]);
   ATT_SET(); //high disable joystick
@@ -403,3 +410,105 @@ digitalWrite(_clk, HIGH);
 	return false;
 }
 
+bool PS2X::setup(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat)
+{
+    int error = 0;
+    byte type = 0;
+    
+ 	printf("start setup\n");  
+    error = config_gamepad(clk, cmd, att, dat);
+    printf("ps2 setup:%d\n",  error);
+  
+  if(error == 0)
+  {
+    printf("Found Controller, configured successful ");
+    printf("Try out all the buttons, X will vibrate the controller, faster as you press harder;\n");
+    printf("holding L1 or R1 will print out the analog stick values.\n");
+    printf("Note: Go to www.billporter.info for updates and to report bugs.\n");
+  }  
+  else if(error == 1)
+    printf("No controller found, check wiring, see readme.txt to enable debug. visit www.billporter.info for troubleshooting tips\n");
+   
+  else if(error == 2)
+    printf("Controller found but not accepting commands. see readme.txt to enable debug. Visit www.billporter.info for troubleshooting tips\n");
+
+  else if(error == 3)
+    printf("Controller refusing to enter Pressures mode, may not support it. \n");
+    
+    if (error)
+        return false;
+  
+  type = readType(); 
+  switch(type) {
+    case 0:
+      printf("Unknown Controller type found ");
+      break;
+    case 1:
+      printf("DualShock Controller found ");
+      break;
+    case 2:
+      printf("GuitarHero Controller found ");
+      break;
+	case 3:
+      printf("Wireless Sony DualShock Controller found ");
+      break;
+   }
+   
+   return true;
+}
+
+double PS2X::read()
+{
+    double buttons = read_gamepad(); //read controller and set large motor to spin at 'vibrate' speed
+    return buttons;
+    
+    for (int i=0; i<sizeof(buttons); i++)
+    {
+        printf("%02x ", ((char*)&buttons)[i]);
+    }
+    printf("\n");
+    
+    if(Button(PSB_START))         //will be TRUE as long as button is pressed
+      printf("Start is being held\n");
+    if(Button(PSB_SELECT))
+      printf("Select is being held\n");      
+
+    if(Button(PSB_PAD_UP)) {      //will be TRUE as long as button is pressed
+      printf("Up held this hard: ");
+    }
+    if(Button(PSB_PAD_RIGHT)){
+      printf("Right held this hard: \n");
+    }
+    if(Button(PSB_PAD_LEFT)){
+      printf("LEFT held this hard: \n");
+    }
+    if(Button(PSB_PAD_DOWN)){
+      printf("DOWN held this hard: \n");
+    }   
+
+    int vibrate = Analog(PSAB_CROSS);  //this will set the large motor vibrate speed based on how hard you press the blue (X) button
+    if (NewButtonState()) {        //will be TRUE if any button changes state (on to off, or off to on)
+      if(Button(PSB_L3))
+        printf("L3 pressed\n");
+      if(Button(PSB_R3))
+        printf("R3 pressed\n");
+      if(Button(PSB_L2))
+        printf("L2 pressed\n");
+      if(Button(PSB_R2))
+        printf("R2 pressed\n");
+      if(Button(PSB_TRIANGLE))
+        printf("Triangle pressed\n");        
+    }
+
+    if(ButtonPressed(PSB_CIRCLE))               //will be TRUE if button was JUST pressed
+      printf("Circle just pressed\n");
+    if(NewButtonState(PSB_CROSS))               //will be TRUE if button was JUST pressed OR released
+      printf("X just changed\n");
+    if(ButtonReleased(PSB_SQUARE))              //will be TRUE if button was JUST released
+      printf("Square just released\n");     
+
+    if(Button(PSB_L1) || Button(PSB_R1)) { //print stick values if either is TRUE
+      printf("Stick Values:...\n");
+    }     
+    delay(50);
+}

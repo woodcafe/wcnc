@@ -75,7 +75,7 @@ GNU General Public License for more details.
 // $$$$$$$$$$$$ DEBUG ENABLE SECTION $$$$$$$$$$$$$$$$
 // to debug ps2 controller, uncomment these two lines to print out debug to uart
 #define PS2X_DEBUG
-#define PS2X_COM_DEBUG
+//#define PS2X_COM_DEBUG
 
 #define __RPI__
 #ifdef __RPI__
@@ -191,11 +191,9 @@ class PS2X {
     boolean NewButtonState(unsigned int);    //will be TRUE if button was JUST pressed OR released
     boolean ButtonPressed(unsigned int);     //will be TRUE if button was JUST pressed
     boolean ButtonReleased(unsigned int);    //will be TRUE if button was JUST released
-    void read_gamepad();
-    boolean  read_gamepad(boolean, byte);
+    double  read_gamepad(boolean motor1=false, byte motor2=0);
     byte readType();
-    byte config_gamepad(uint8_t, uint8_t, uint8_t, uint8_t);
-    byte config_gamepad(uint8_t, uint8_t, uint8_t, uint8_t, bool, bool);
+    byte config_gamepad(uint8_t, uint8_t, uint8_t, uint8_t, bool pressures=false, bool rumble=false);
     void enableRumble();
     bool enablePressures();
     byte Analog(byte);
@@ -208,6 +206,9 @@ class PS2X {
      void ATT_SET(void);
      void ATT_CLR(void);
      bool DAT_CHK(void);
+     bool setup(uint8_t clk, uint8_t cmd, uint8_t att, uint8_t dat);
+     double read();
+
     
   private:    
     unsigned char _gamepad_shiftinout (char);

@@ -2,18 +2,16 @@ import serial
 import time
 from threading import Thread
 from optparse import OptionParser
-from joystick import Joystick
+from PS2X import ps2
 
 class Cnc(object):
-    def __init__(self, opts, args=None, baud=115200):
-#    def __init__(self, port='COM3', baud=9600):
+    def __init__(self, port='COM3', baud=115200):
+        self.port = port
+        self.baud = baud
         self.ser = None
-        if isinstance(opts, str):
-            self.port = opts
-            self.baud = baud
-        else:
-            self.port = opts.port
-            self.baud = opts.baud
+        self.jogging = False
+        self.powerOn = False
+        self.p2 = None
         
     def open(self):
         self.ser = serial.Serial(port=self.port, baudrate=self.baud,
@@ -39,14 +37,15 @@ class Cnc(object):
                 time.sleep(0.5)
                 continue
         
-    def write(self, msg):
+    def write(self, msg, check=True):
         if not self.ser:
             self.open()
         self.ser.write((msg+'\n').encode())
         print(">>>"+msg)
         self.read(True)
-        self.ser.write("?\n".encode())
-        self.read(True)
+        if check:
+            self.ser.write("?\n".encode())
+            self.read(True)
     
     def move(self, x=None, y=None, z=None, f=0):
         print('cnc:move x=%s y=%s z=%s f=%d' %(x, y, z, f))
@@ -65,19 +64,56 @@ class Cnc(object):
         f = open(fname)
         for line in f:
             self.write(line)
-
-class Sander(Cnc):
-    def __init__(self, port, width=100):
-        Cnc.__init__(self, port)
-        self.width = width
             
-    def move(self, x=0, y=0, f=100):
-        print('Sander:move x=%d y=%d feed=%d width=%d' %(x, y, f, self.width))
-        for v in range(0, abs(y)+1, self.width):
+    def sand(self, x=0, y=0, f=100, width=50):
+        print('Sander:move x=%d y=%d feed=%d width=%d' %(x, y, f, width))
+        self.write('M3')
+        for v in range(0, abs(y)+1, width):
             print("v=%d"%v)
-            super(Sander, self).move(y=v*y/abs(y), f=f*10)
-            super(Sander, self).move(x, f=f)
-            super(Sander, self).move(0, f=f)
+            self.move(y=v*y/abs(y), f=f*10)
+            self.move(x, f=f)
+            self.move(0, f=f)
+        self.write('M5')
+            
+    def jogStart(self):
+        self.p2 = ps2.PS2(bf=self.jogButton, sf=self.jogStick)
+        if self.p2.setup():
+            self.p2.loop()
+        else:
+            print('setup fail!!')
+            return False
+        return True
+        
+    def jogStick(self, x, y):
+        #print('x:%d y:%d' %(x,y))
+        if x==0 and y == 0:
+            if self.jogging:
+                self.write('!~')
+            self.jogging = False
+            return
+        self.write('$J=G91 X%d Y%d F10000' %(x*10, y*10), False)
+        self.jogging = True
+        
+    def jogButton(self, b):
+        step = 1
+        pos = {ps2.BUTTON_RIGHT:'X', ps2.BUTTON_LEFT:'X-', ps2.BUTTON_UP:'Y', ps2.BUTTON_DOWN:'Y-',
+            ps2.BUTTON_L1:'Z', ps2.BUTTON_L2:'Z-'}
+        if b in pos:
+            self.write('$J=G91 %s%f f10000'%(pos[b], step), False)
+        elif b == ps2.BUTTON_START:
+            self.powerOn = not self.powerOn
+            if self.powerOn:
+                self.write('M3')
+            else:
+                self.write('M5')
+        elif b == ps2.BUTTON_SELECT:
+                self.p2.stop()
+        elif self.jogging:
+            self.write('!~')
+            self.joggin = False
+            
+
+
 
 class Holes(Cnc):
     def __init__(self, opts, args):
@@ -120,20 +156,14 @@ class Test(Cnc):
             super(Test, self).move(x*-1, y*-1, z*-1)
             time.sleep(5)
             
-class Jog(Joystick):
-    def move(self, x, y):
-        print('move x:%d y:%d' % (x,y))
-        
-    def key(self, button, state):
-        print('key:%d state:%d' % (button, state))
     
 def main():
     parser = OptionParser()
     parser.add_option('-x', '--x', type='int', dest='x', help='x mm length', default=0)
     parser.add_option('-y', '--y', type='int', dest='y', help='y mm length', default=0)
     parser.add_option('-z', '--z', type='int', dest='z', help='z mm length', default=0)
-    parser.add_option('-p', '--port', dest='port', help='serial port', default='COM3')
-    parser.add_option('-b', '--baud', type='int', dest='baud', help='baud rate', default=9600)
+    parser.add_option('-p', '--port', dest='port', help='serial port', default='/dev/ttyUSB0')
+    parser.add_option('-b', '--baud', type='int', dest='baud', help='baud rate', default=115200)
     parser.add_option('-s', '--sand', action='store_true', dest='s', help='sand second')    
     parser.add_option('-g', '--gcode', dest='g', help='gcode file')    
     parser.add_option('-f', '--feed', type='int', dest='f', help='feed rate', default=100)    
@@ -144,8 +174,8 @@ def main():
     
     cnc = Cnc(options.port)
     if options.s:
-        cnc = Sander(options.port)
-        options.z = options.f
+        sand(options.x, options.y, options.f)
+        return
     elif options.g:
         cnc.gcode(options.g)
         return
@@ -155,8 +185,7 @@ def main():
         cnc.write(options.w)
         return
     elif options.jog:
-        cnc = Jog()
-        cnc.read()
+        cnc.jogStart()
         return
     cnc.move(options.x, options.y, options.z)
 

@@ -10,7 +10,7 @@ class Joystick(object):
     DOWN = 0
     HOLD = 2
     
-    def __init__(self, dev='/dev/input/event3'):
+    def __init__(self, dev='/dev/input/event2'):
         self.dev = InputDevice(dev)
         
     def jread(self):
@@ -36,4 +36,4 @@ class Joystick(object):
     
 if __name__ == '__main__':
     joy = Joystick()
-    joy.read()
+    joy.jread()
